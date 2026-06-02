@@ -1,0 +1,5 @@
+aws_region          = "us-gov-west-1"
+environment         = "prod"
+project_name        = "document-analysis-microservice"
+ecr_repository_name = "document-analysis-microservice"
+ecs_cluster_name    = "document-analysis-prod"

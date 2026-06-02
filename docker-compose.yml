@@ -1,0 +1,18 @@
+# Docling worker (SQS intake, Kafka completion). Set SQS_QUEUE_URL, KAFKA_BOOTSTRAP_SERVERS.
+services:
+  app:
+    build: .
+    environment:
+      PYTHONPATH: /app/src
+      TEMP_DIR: /tmp/document-analysis
+      LOG_LEVEL: info
+      ENTRYPOINT_MODE: worker
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+      OTEL_SERVICE_NAME: document-analysis
+      OTEL_SERVICE_VERSION: "1.0.0"
+      OTEL_SEMCONV_STABILITY_OPT_IN: http
+      ENV: ${ENV:-dev}
+    volumes:
+      - ./tmp:/tmp/document-analysis

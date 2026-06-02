@@ -1,0 +1,167 @@
+name: Deploy to Prod
+
+on:
+  push:
+    tags:
+      - '*'
+
+concurrency:
+  group: deploy-prod-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-gov-west-1
+  ECR_REPOSITORY: document-analysis-microservice
+  ECS_CLUSTER: document-analysis-prod
+  WORKER_SERVICE: document-analysis-microservice-prod-worker
+  BRIDGE_SERVICE: document-analysis-microservice-prod-bridge
+
+jobs:
+  verify-and-promote:
+    name: Verify Dev Image and Promote to Prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_tag: ${{ steps.promote.outputs.image_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws-us-gov:iam::306438150607:role/TerraformExecutionRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure AWS credentials are configured
+        run: aws sts get-caller-identity
+
+      - name: Verify and promote dev-latest image
+        id: promote
+        run: |
+          set -euo pipefail
+          REGISTRY=$(aws ecr describe-registry --region "${AWS_REGION}" --query 'registryId' --output text).dkr.ecr.${AWS_REGION}.amazonaws.com
+          REPOSITORY="${ECR_REPOSITORY}"
+          DEV_TAG=dev-latest
+          PROD_TAG=prod-latest
+
+          echo "Checking if ${REGISTRY}/${REPOSITORY}:${DEV_TAG} exists..."
+          if ! aws ecr describe-images \
+            --repository-name "${REPOSITORY}" \
+            --image-ids imageTag="${DEV_TAG}" \
+            --region "${AWS_REGION}" \
+            --no-cli-pager > /dev/null 2>&1; then
+            echo "ERROR: Image ${REGISTRY}/${REPOSITORY}:${DEV_TAG} does not exist!"
+            echo "Please ensure dev deployment has completed successfully first."
+            exit 1
+          fi
+
+          echo "Fetching image manifest for ${DEV_TAG}..."
+          IMAGE_DATA=$(aws ecr batch-get-image \
+            --repository-name "${REPOSITORY}" \
+            --image-ids imageTag="${DEV_TAG}" \
+            --region "${AWS_REGION}" \
+            --output json)
+
+          IMAGE_MANIFEST=$(echo "$IMAGE_DATA" | jq -r '.images[0].imageManifest')
+          IMAGE_DIGEST=$(echo "$IMAGE_DATA" | jq -r '.images[0].imageId.imageDigest')
+
+          if [ -z "$IMAGE_MANIFEST" ] || [ "$IMAGE_MANIFEST" == "null" ]; then
+            echo "ERROR: Failed to get image manifest for ${DEV_TAG}"
+            exit 1
+          fi
+
+          echo "Found ${REGISTRY}/${REPOSITORY}:${DEV_TAG} with digest ${IMAGE_DIGEST}"
+
+          echo "Removing existing ${PROD_TAG} tag if present..."
+          aws ecr batch-delete-image \
+            --repository-name "${REPOSITORY}" \
+            --image-ids imageTag="${PROD_TAG}" \
+            --region "${AWS_REGION}" \
+            2>&1 | grep -v "ImageNotFound" || echo "No existing ${PROD_TAG} tag to remove (this is OK)"
+
+          echo "Promoting image to ${PROD_TAG}..."
+          aws ecr put-image \
+            --repository-name "${REPOSITORY}" \
+            --image-tag "${PROD_TAG}" \
+            --image-manifest "$IMAGE_MANIFEST" \
+            --region "${AWS_REGION}" \
+            --no-cli-pager
+
+          echo "Successfully promoted ${DEV_TAG} to ${PROD_TAG}"
+          echo "image_tag=${PROD_TAG}" >> "$GITHUB_OUTPUT"
+
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: verify-and-promote
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws-us-gov:iam::306438150607:role/TerraformExecutionRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure AWS credentials are configured
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Terraform Init
+        working-directory: infrastructure/environments/prod
+        run: terraform init -backend-config=backend.hcl
+
+      - name: Terraform Plan
+        working-directory: infrastructure/environments/prod
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: infrastructure/environments/prod
+        run: terraform apply -auto-approve tfplan
+
+  rollout-deployment:
+    name: Rollout Deployment to Prod ECS
+    runs-on: ubuntu-latest
+    needs: [verify-and-promote, deploy-infrastructure]
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws-us-gov:iam::306438150607:role/TerraformExecutionRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Force new deployment on worker and bridge
+        run: |
+          set -euo pipefail
+          for SVC in "${WORKER_SERVICE}" "${BRIDGE_SERVICE}"; do
+            echo "Rolling out ${SVC}..."
+            aws ecs update-service \
+              --cluster "${ECS_CLUSTER}" \
+              --service "${SVC}" \
+              --force-new-deployment \
+              --region "${AWS_REGION}" \
+              --no-cli-pager
+          done
+          echo "ECS service deployments triggered."
+
+      - name: Wait for services to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${WORKER_SERVICE}" "${BRIDGE_SERVICE}" \
+            --region "${AWS_REGION}"
+          echo "Services stable."

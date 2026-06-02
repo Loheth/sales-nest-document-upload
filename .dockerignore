@@ -1,0 +1,32 @@
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.swp
+*~
+
+# Local venv and cache (we build venv in-container)
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Tests and dev (not needed in image)
+tests
+*.md
+!README.md
+
+# CI and infra (not needed for image build)
+.github
+infrastructure
+*.tf
+*.tfvars
+
+# Misc
+.env
+.env.*
+*.log

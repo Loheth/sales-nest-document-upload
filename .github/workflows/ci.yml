@@ -1,14 +1,16 @@
-# Same checks as ci.yml (kept for existing branch protection rules that reference this workflow).
-name: PR Validation
+# SalesNest: local development — lint and test only (no Docker, no AWS deploy).
+name: CI
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
 
 concurrency:
-  group: pr-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

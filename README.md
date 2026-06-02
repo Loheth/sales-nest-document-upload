@@ -175,6 +175,10 @@ uv run ruff check src/ tests/
 uv run ruff format src/ tests/
 ```
 
+## GitHub CI
+
+Pushes to `main` run **lint + tests only** (`.github/workflows/ci.yml`). There is no Docker build or AWS deploy in CI — you run conversion locally with `uv run python -m document_analysis`.
+
 ## Production / cloud (later)
 
 A full deployment uses Kafka → SQS → ECS workers → S3. That code remains in the repo (`ENTRYPOINT_MODE=bridge|worker`, `infrastructure/`, Docker). When SalesNest moves to AWS, configure SalesNest-specific buckets, queues, event schemas, and Terraform state in those folders.

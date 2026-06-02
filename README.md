@@ -131,7 +131,7 @@ uv run pytest
 uv run ruff check src/ tests/
 ```
 
-Expected: **9 passed**, 1 skipped (Kafka event schema test — not needed for local file mode).
+Expected: **10 passed** (includes Kafka event round-trip test).
 
 ## Troubleshooting
 

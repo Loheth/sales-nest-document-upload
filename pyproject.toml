@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "document-analysis-microservice"
 version = "0.1.0"
-description = "Docling-based document analysis microservice for Flash (PDF, DOCX, PPTX, images)"
+description = "SalesNest Docling-based document analysis (PDF, DOCX, PPTX, XLSX, images)"
 authors = [{ name = "AI-OWL", email = "aiteam@aiowl.com" }]
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
@@ -42,7 +42,7 @@ Homepage = "https://github.com/AI-OWL/document-analysis-microservice"
 Repository = "https://github.com/AI-OWL/document-analysis-microservice"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/document_analysis"]
+packages = ["src/document_analysis", "src/flash_events"]
 
 [tool.ruff]
 target-version = "py311"
@@ -72,7 +72,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["document_analysis"]
+known-first-party = ["document_analysis", "flash_events"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/document_analysis/services/document_conversion.py" = ["E402", "I001"]

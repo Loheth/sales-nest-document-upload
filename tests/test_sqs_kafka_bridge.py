@@ -12,7 +12,6 @@ from document_analysis.services.sqs import send_job
 
 
 def test_document_event_round_trips_through_value_b64() -> None:
-    pytest.importorskip("flash_events.document")
     from flash_events.document import DocumentProcessingRequestedEvent
 
     event = DocumentProcessingRequestedEvent(

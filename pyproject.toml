@@ -76,6 +76,7 @@ known-first-party = ["document_analysis", "flash_events"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/document_analysis/services/document_conversion.py" = ["E402", "I001"]
+"src/document_analysis/__main__.py" = ["E402"]
 
 [tool.ruff.format]
 quote-style = "double"

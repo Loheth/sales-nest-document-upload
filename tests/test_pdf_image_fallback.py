@@ -51,6 +51,7 @@ def test_describe_missing_pages_skips_already_described(
     monkeypatch.setattr(fb, "describe_image_via_bedrock_with_usage", _fake)
 
     settings = Settings()
+    settings.pdf_image_fallback_enabled = True
     settings.picture_description_backend = "bedrock"
     settings.pdf_image_fallback_min_long_edge_px = 256
     settings.picture_description_api_concurrency = 4
@@ -79,6 +80,7 @@ def test_describe_missing_pages_per_page_cap_and_bedrock_mock(
     monkeypatch.setattr(fb, "describe_image_via_bedrock_with_usage", _fake)
 
     settings = Settings()
+    settings.pdf_image_fallback_enabled = True
     settings.picture_description_backend = "bedrock"
     settings.pdf_image_fallback_min_long_edge_px = 256
     settings.pdf_image_fallback_max_images_per_page = 1
@@ -111,6 +113,7 @@ def test_describe_missing_pages_local_smolvlm_mock(
     monkeypatch.setattr(fb, "get_local_fallback_vlm_model", lambda _settings: _Fake())
 
     settings = Settings()
+    settings.pdf_image_fallback_enabled = True
     settings.picture_description_backend = "local"
     settings.pdf_image_fallback_min_long_edge_px = 256
     settings.pdf_image_fallback_max_images_per_page = 2

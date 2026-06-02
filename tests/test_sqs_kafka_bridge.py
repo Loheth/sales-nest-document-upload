@@ -5,8 +5,6 @@ from __future__ import annotations
 import base64
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from document_analysis.config.settings import Settings
 from document_analysis.services.sqs import send_job
 

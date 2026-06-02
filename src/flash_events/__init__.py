@@ -1,5 +1,6 @@
 """SalesNest Kafka event models (vendored for local/CI builds)."""
 
+from flash_events.dlq import ProcessingFailedEvent
 from flash_events.document import (
     DocumentPartitionRequestedEvent,
     DocumentProcessingCompletedEvent,
@@ -7,7 +8,6 @@ from flash_events.document import (
     DocumentUnitCompletedEvent,
     DocumentUnitRequestedEvent,
 )
-from flash_events.dlq import ProcessingFailedEvent
 
 __all__ = [
     "DocumentPartitionRequestedEvent",

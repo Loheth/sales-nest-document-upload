@@ -77,9 +77,8 @@ async def emit_document_processing_completed(
     if not _is_enabled():
         return
 
-    from flash_events.document import DocumentProcessingCompletedEvent
-
     from document_analysis.services.s3_key_parser import parse_s3_key
+    from flash_events.document import DocumentProcessingCompletedEvent
 
     ids = parse_s3_key(s3_key)
     if ids is None:
